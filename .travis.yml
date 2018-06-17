@@ -1,0 +1,15 @@
+language: python
+python:
+- '3.4'
+- '3.6'
+- 3.7-dev
+- pypy
+script:
+- pytest
+deploy:
+  provider: pypi
+  user: patrickchen
+  password:
+    secure: "YGG2PoFMojYpR3RZsm7KHMLihw1Y7FP6OoglovsR8GGQAQsf99CSeOIvtSibFAIwc8MP61dEc9QIMfoGDN5fyDv8YsjbU9fUPGbS3FNVDJXE6wuXhGwA7uHIyAl6gxUomHqHYK2g6NC40g6szxYCQKMEc7zu6yfp09Fgu8nPxvm//OxB9zycYfJlWxJ26LuoYk+vggiolL0r5SoqwRgthhTgCAGDkPm57d0ocGY7zsThwfCZ7bpbpfoyPZII21Sx41kkNzXJapsNr2MZoS+weecEGqHG68DeWZlTde+QxYhQsmR/q9BHv9Grx2sPDX36EZNfUa5gyWMTaa5n71YOuBqSNP07zEuHWWmll+opkffAf8mi8bDz4FyC+GDBNfAgXRfKQe5QgoJOwKH8yX+217oeeYOiBrChYPLCeRIRyB/Z919fqEcXxlHQBSZXOvGbPtViUhxIpzty/VYrsFrta7mbRNtq91D8XazxKmBsVIHi8dNOsjx7/EF3pIDV5rcgf/a6s6Tp2vlBDB8tDqSFByX6GTZeD1N//SdT2vA1pxgGB0c1uDzAeSlAHCMdGFYvjnfvwmqXHPgJtUwoxSmntOcDFveDeESobOBY14h4b1u2H4yGAOEw/A7/7K5lZMY7+XfQ3T09ZGA1kPCsotmeZ8Q717cLRtMmjmxqICDWqHc="
+  on:
+    branch: master
