@@ -19,15 +19,8 @@ if is_newer_sys_version(3, 4):
 
         return module
 
-elif is_newer_sys_version(3, 3):
-    def load_module(path):
-        module = importlib.machinery.SourceFileLoader(
-            'target_module', path).load_module()
-
-        return module
-
 else:
-    raise NotImplementedError('This module only support Python version >= 3.')
+    raise NotImplementedError('This module only support Python version >= 3.4')
 
 
 def main(module, dry_run=False, *arguments):

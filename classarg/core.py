@@ -28,7 +28,13 @@ def parse(func):
     else:
         raise TypeError('Could not determine the signature of ' + str(func))
 
-    return spec
+    return spec.__class__(args=spec.args or [],
+                          varargs=spec.varargs,
+                          varkw=spec.varkw,
+                          defaults=spec.defaults or tuple(),
+                          kwonlyargs=spec.kwonlyargs or tuple(),
+                          kwonlydefaults=spec.kwonlydefaults or {},
+                          annotations=spec.annotations or {})
 
 
 def match(func, args=None):
