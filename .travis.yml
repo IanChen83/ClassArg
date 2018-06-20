@@ -19,7 +19,7 @@ matrix:
         - TOXENV=coveralls
 
 script:
-  - pytest
+  - tox --recreate
 deploy:
   provider: pypi
   skip_existing: true
@@ -28,3 +28,8 @@ deploy:
     secure: uP+gFNnR/VCQV+ukCfPLhiBvO/VLRNC9dIMIhzC75sllcBa1QZb6Z5N64AoN7plApjhVtcCyAyehEmqImB1AZX0vwVSZLmCJvgeYvf4rJ8qA44H38B8etW3MYqHrMb3eUEXiI+D7UsxVTRVC8oqrnF14c1TinrtXAKdVSMdeIxyIRMy0ZkSB69v3c4LAdVMWkuzYB9oITQZEJvYXonD6gw+Q/Bk0wfVTVN2Zod+TY5YgAFIGFkRraOzBPKlEbhtfAoP7/7O1rMLNGLl/7jkYrOzsnui4YNjDNIUiqh2gilWxzF9Szsdfi2pJB5rtrkoiCQLd6a0+djjvqWAoFMgGapc8ySIgKy6ePWg9MGz7yqEjw1qmxj4biKx0DXvSRZ9RzntkV8zn2nBM+UwxAqJib468W57TbWEEfTXaMEYzDP2CgyttywpyYcVTbh0tt/1FHhjxNg9ztjz4BEVdIKsLA5r3QeP9uW5RxOoCy2AeY0hqY381uMLlpwVntzAMkiUTwF9dMf3FBzUAt2mR5tO88kQH+W80xvLCOVVn+hHm/k3XYW0a0XCJ08ybZnBQCMYQRp2qk7ZtI10yAF5MHnUwhrg4xXtxBEPUkxBOnj9yfg4H8OwW3WNU6+7HIyma3g4hXyjd58KfgnGzleBUbrNMm+p3pWwKQqzQK9D8XlJwPWM=
   on:
     branch: master
+
+cache:
+  directories:
+    - $HOME/.cache/pip
+    - $HOME/.cache/pre-commit
