@@ -4,7 +4,7 @@ import setuptools
 import classarg
 
 
-with open('README.md', 'r') as f:
+with open('README.rst', 'r') as f:
     long_description = f.read()
 
 setuptools.setup(
@@ -14,7 +14,6 @@ setuptools.setup(
     author_email=classarg.__email__,
     description='A library for easily creating CLI applications.',
     long_description=long_description,
-    long_description_content_type='text/markdown',
     url='https://github.com/IanChen83/ClassArg',
     packages=setuptools.find_packages(),
     classifiers=(
