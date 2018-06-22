@@ -18,9 +18,10 @@ matrix:
     - python: "3.7-dev"
       env:
         - TOXENV=py37
-    - python: "3.8-dev"
-      env:
-        - TOXENV=py38
+    # Wait for python 3.8 support
+    # - python: "3.8-dev"
+    #   env:
+    #     - TOXENV=py38
     - python: 3.6
       env:
         - TOXENV=coveralls
