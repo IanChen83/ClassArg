@@ -27,8 +27,8 @@ if is_newer_sys_version(3, 5):
     from typing import get_type_hints
 
 else:
-    def get_type_hints(obj, globalns=None, localns=None):
-        if hasattr(obj, 'annotations'):
-            return dict(obj.__annotations__)
+    from inspect import getfullargspec
 
-        return dict()
+    def get_type_hints(obj, globalns=None, localns=None):
+        spec = getfullargspec(obj)
+        return spec.annotations
