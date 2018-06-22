@@ -28,4 +28,7 @@ if is_newer_sys_version(3, 5):
 
 else:
     def get_type_hints(obj, globalns=None, localns=None):
-        return obj.__annotations__
+        if hasattr(obj, 'annotations'):
+            return dict(obj.__annotations__)
+
+        return dict()
