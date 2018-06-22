@@ -20,7 +20,7 @@ __status__ = 'Prototype'
 
 
 # classarg(func) only available in python >= 3.5
-if is_newer_sys_version(3, 4):
+if is_newer_sys_version(3, 5):
     import sys
 
     class Main(sys.modules[__name__].__class__):
