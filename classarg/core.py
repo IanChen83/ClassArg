@@ -37,7 +37,7 @@ def _get_normalized_spec(func, skip_annotation=False):
     if skip_annotation:
         ret['annotations'] = dict()
     else:
-        ret['annotations'] = get_type_hints(func)
+        ret['annotations'] = parse_annotation(func)
 
     return SimpleNamespace(**ret)
 

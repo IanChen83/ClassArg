@@ -1,3 +1,4 @@
+dist: xenial
 language: python
 
 install:
@@ -41,3 +42,8 @@ cache:
   directories:
     - $HOME/.cache/pip
     - $HOME/.cache/pre-commit
+
+notifications:
+  email:
+    on_success: never # default: change
+    on_failure: never # default: always

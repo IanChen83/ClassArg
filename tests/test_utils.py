@@ -3,11 +3,11 @@ from unittest import mock
 
 import pytest
 
-import classarg.__main__ as main
+import classarg.utils as utils
 
 
 def test_is_newer_sys_version():
-    target_func = main.is_newer_sys_version
+    target_func = utils.is_newer_sys_version
     info = sys.version_info
 
     assert info.minor >= 4
@@ -17,6 +17,7 @@ def test_is_newer_sys_version():
     assert target_func(info.major, info.minor+1) is False
     assert target_func(info.major+1, 0) is False
 
+
 def test_failed_load_module():
     with pytest.raises(Exception) as e_info:
         with mock.patch.object(sys, 'version_info') as v_info:
@@ -24,6 +25,6 @@ def test_failed_load_module():
             v_info.minor = 3
             v_info.micro = 0
 
-            main.load_module('./')
+            utils.load_module('./')
 
         assert e_info.type is AttributeError
