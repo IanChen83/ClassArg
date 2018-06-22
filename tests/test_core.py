@@ -1,4 +1,4 @@
-from inspect import FullArgSpec
+from types import SimpleNamespace
 
 import pytest
 import classarg.core as core
@@ -31,21 +31,25 @@ def _gen_parse_testcase():
     class Y:
         pass
 
-    expect = FullArgSpec(
+    null_expect = SimpleNamespace(
+        args=[], varargs=None, varkw=None, defaults=tuple(),
+        kwonlyargs=tuple(), kwonlydefaults={}, annotations={})
+
+    expect = SimpleNamespace(
         args=['a', 'b'], varargs='c', varkw='f', defaults=(1,),
         kwonlyargs=['d', 'e'], kwonlydefaults={'e': 2}, annotations={'d': int})
 
-    expect_with_self = FullArgSpec(
+    expect_with_self = SimpleNamespace(
         args=['self', 'a', 'b'], varargs='c', varkw='f', defaults=(1,),
         kwonlyargs=['d', 'e'], kwonlydefaults={'e': 2}, annotations={'d': int})
 
     yield func, expect                  # func-expect0 function
-    yield X(1, d=2).func, expect        # func-expect1 class method
-    yield X.func, expect_with_self      # func-expect2 class instance method
-    yield X.func2, expect               # func-expect3 class classmethod
-    yield X.func3, expect               # func-expect4 class staticmethod
-    yield X, NotImplementedError()      # func-expect5 class, __init__ defined
-    yield Y, NotImplementedError()      # func-expect6 class
+    yield X.func, expect_with_self      # func-expect1 class method
+    yield X(1, d=2).func, expect        # func-expect2 instance method
+    yield X(1, d=2).func2, expect       # func-expect3 instance classmethod
+    yield X(1, d=2).func3, expect       # func-expect4 instance staticmethod
+    yield X, expect                     # func-expect5 class, __init__ defined
+    yield Y, null_expect                # func-expect6 class
     yield X(1, d=2), expect             # func-expect7 class instance __call__
     yield Y(), TypeError()              # func-expect8 error
     yield 'error input', TypeError()    # func-expect9 error
@@ -55,7 +59,9 @@ def _gen_parse_testcase():
 def test_parse(func, expect):
     if isinstance(expect, Exception):
         with pytest.raises(Exception) as e_info:
-            core.parse(func)
+            ret = core.parse(func)
+            print(ret)  # only print if not raising error
+
         assert isinstance(expect, e_info.type)
 
     else:

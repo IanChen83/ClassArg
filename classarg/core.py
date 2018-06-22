@@ -1,5 +1,8 @@
 import sys
-from inspect import getfullargspec, isfunction, ismethod, isclass, FullArgSpec
+from types import SimpleNamespace
+from inspect import getfullargspec, isfunction, ismethod, isclass
+
+from .utils import get_type_hints
 
 
 def validate(func, kwargs):
@@ -10,35 +13,63 @@ def validate(func, kwargs):
         validate_func(func=func, match=kwargs)
 
 
-def parse(func):
+def parse_annotation(func):
+    annotations = get_type_hints(func)
+    return annotations
+
+
+def _get_normalized_spec(func, skip_annotation=False):
+    spec = getfullargspec(func)
+    ret = {
+        'args': tuple(),
+        'varargs': None,
+        'varkw': None,
+        'defaults': tuple(),
+        'kwonlyargs': tuple(),
+        'kwonlydefaults': dict(),
+    }
+
+    for key in ret:
+        value = getattr(spec, key)
+        if value:
+            ret[key] = value
+
+    if skip_annotation:
+        ret['annotations'] = dict()
+    else:
+        ret['annotations'] = get_type_hints(func)
+
+    return SimpleNamespace(**ret)
+
+
+def parse(func, *, skip_annotation=False):
     if isfunction(func):
-        spec = getfullargspec(func)
+        spec = _get_normalized_spec(func, skip_annotation)
 
     elif ismethod(func):
-        spec = getfullargspec(func)
-        del spec.args[0]  # remove first argument
+        spec = _get_normalized_spec(func, skip_annotation)
+        del spec.args[0]
 
     elif isclass(func):
-        raise NotImplementedError()
+        spec = _get_normalized_spec(func.__init__, skip_annotation)
+        del spec.args[0]
+
+        if func.__init__ is object.__init__:
+            spec.varargs = None
+            spec.varkw = None
 
     elif hasattr(func, '__call__'):
-        spec = getfullargspec(func)
-        del spec.args[0]  # remove first argument
+        spec = _get_normalized_spec(func.__call__, skip_annotation)
+        del spec.args[0]
 
     else:
         raise TypeError('Could not determine the signature of ' + str(func))
 
-    return spec.__class__(args=spec.args or [],
-                          varargs=spec.varargs,
-                          varkw=spec.varkw,
-                          defaults=spec.defaults or tuple(),
-                          kwonlyargs=spec.kwonlyargs or tuple(),
-                          kwonlydefaults=spec.kwonlydefaults or {},
-                          annotations=spec.annotations or {})
+    return spec
 
 
 def match(func, args=None):
-    if isinstance(func, FullArgSpec):
+    if isinstance(func, SimpleNamespace):
         spec = func
     else:
         spec = parse(func)

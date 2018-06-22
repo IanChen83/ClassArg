@@ -5,9 +5,6 @@ from .core import parse, match, run
 __all__ = ('parse', 'run', 'match')
 
 
-# sys.modules[__name__].__call__ = run
-
-
 # The following variables will be used in PyPI index.
 __name__ = 'classarg'
 
@@ -21,3 +18,10 @@ __email__ = 'patrickchen1994@gmail.com'
 
 # Prototype, Development, or Production
 __status__ = 'Prototype'
+
+
+class Main(sys.modules[__name__].__class__):
+    __call__ = run
+
+
+sys.modules[__name__].__class__ = Main
