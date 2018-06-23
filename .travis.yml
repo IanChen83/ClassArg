@@ -8,16 +8,16 @@ matrix:
   include:
     - python: 3.4
       env:
-        - TOXENV=coveralls-py34
+        - TOXENV=coverage-py34
     - python: 3.5
       env:
-        - TOXENV=coveralls-py35
+        - TOXENV=coverage-py35
     - python: 3.6
       env:
-        - TOXENV=coveralls-py36
+        - TOXENV=coverage-py36
     - python: "3.7-dev"
       env:
-        - TOXENV=coveralls-py37
+        - TOXENV=coverage-py37
     # Wait for python 3.8 support
     # - python: "3.8-dev"
     #   env:
