@@ -2,7 +2,7 @@ import sys
 from types import SimpleNamespace
 from inspect import getfullargspec, isfunction, ismethod, isclass
 
-from ._typing import get_type_hints, Union, Optional, List, Set, Tuple
+from ._typing import get_type_hints, Union, Optional
 
 
 __all__ = (

@@ -1,5 +1,5 @@
 import pytest
-from classarg._typing import Union, Optional, List, Set, Tuple
+from classarg._typing import Union, Optional
 
 
 NoneType = type(None)
@@ -31,5 +31,5 @@ def test_parse(type1, type2, expect):
             res = type1[type2]
             type_name, types = expect
 
-            assert str(type(res)) == type_name
+            assert str(res.__origin__) == type_name
             assert set(res.__args__) == set(types)
