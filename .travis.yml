@@ -8,23 +8,20 @@ matrix:
   include:
     - python: 3.4
       env:
-        - TOXENV=py34
+        - TOXENV=coveralls-py34
     - python: 3.5
       env:
-        - TOXENV=py35
+        - TOXENV=coveralls-py35
     - python: 3.6
       env:
-        - TOXENV=py36
+        - TOXENV=coveralls-py36
     - python: "3.7-dev"
       env:
-        - TOXENV=py37
+        - TOXENV=coveralls-py37
     # Wait for python 3.8 support
     # - python: "3.8-dev"
     #   env:
     #     - TOXENV=py38
-    - python: 3.6
-      env:
-        - TOXENV=coveralls
 
 script:
   - tox --recreate
