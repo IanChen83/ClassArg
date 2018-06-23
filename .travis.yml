@@ -21,7 +21,7 @@ matrix:
     # Wait for python 3.8 support
     # - python: "3.8-dev"
     #   env:
-    #     - TOXENV=py38
+    #   - TOXENV=coveralls-py38
 
 script:
   - tox --recreate
