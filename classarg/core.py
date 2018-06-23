@@ -2,7 +2,16 @@ import sys
 from types import SimpleNamespace
 from inspect import getfullargspec, isfunction, ismethod, isclass
 
-from .utils import get_type_hints
+from ._typing import get_type_hints, Union, Optional, List, Set, Tuple
+
+
+__all__ = (
+    'match',
+    'run',
+    'parse',
+    'parse_annotation',
+    'validate',
+)
 
 
 def validate(func, kwargs):
@@ -13,6 +22,18 @@ def validate(func, kwargs):
         validate_func(func=func, match=kwargs)
 
 
+# We follow this cheat sheet
+# http://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html#built-in-types
+# but only support the following types
+#
+# 1. built-in types:
+#    int, float, bool, str
+#
+# 2. collections:
+#    List, Tuple, Set
+#
+# 3. misc:
+#    Union, Optional
 def parse_annotation(func):
     annotations = get_type_hints(func)
     return annotations

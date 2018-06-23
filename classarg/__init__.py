@@ -1,5 +1,5 @@
 from .core import parse, match, run
-from .utils import is_newer_sys_version
+from .utils import compatible_with
 
 __all__ = ('parse', 'run', 'match')
 
@@ -20,7 +20,7 @@ __status__ = 'Prototype'
 
 
 # classarg(func) only available in python >= 3.5
-if is_newer_sys_version(3, 5):
+if compatible_with(3, 5):
     import sys
 
     class Main(sys.modules[__name__].__class__):

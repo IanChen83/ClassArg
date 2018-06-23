@@ -6,8 +6,8 @@ import pytest
 import classarg.utils as utils
 
 
-def test_is_newer_sys_version():
-    target_func = utils.is_newer_sys_version
+def test_compatible_with():
+    target_func = utils.compatible_with
     info = sys.version_info
 
     assert info.minor >= 4
