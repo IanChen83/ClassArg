@@ -1,20 +1,27 @@
+# Some code are modified from cpython's typing module.
+from inspect import getfullargspec
+
+
 NoneType = type(None)
 
 _builtin = {int, float, bool, str, NoneType}
-_meta = {type}
-_supported = {
-    int: 'int',
-    float: 'float',
-    bool: 'bool',
-    str: 'str',
-    NoneType: 'NoneType',
+_meta = set()
+_supported_names = {
+    'int': int,
+    'float': float,
+    'bool': bool,
+    'str': str,
+    'None': None,
+    'NoneType': NoneType,
 }
 
 
-def get_type_hints(obj, globalns=None, localns=None):
-    from inspect import getfullargspec
-    spec = getfullargspec(obj)
-    return spec.annotations
+def _eval_type_from_str(obj):
+    try:
+        code = compile(obj, '<string>', 'eval')
+        return eval(code, dict(**_supported_names, __builtin__=None))
+    except (SyntaxError, NameError):
+        raise TypeError('Failed to parse type from string')
 
 
 def _type_transform(obj):
@@ -24,11 +31,41 @@ def _type_transform(obj):
     elif obj in _builtin:
         return obj
 
-    t = type(obj)
-    if t in _meta:
-        return t
+    if isinstance(obj, str):
+        t = _eval_type_from_str(obj)
+        if t in _builtin or type(t) in _meta:
+            return t
+    else:
+        t = type(obj)
+        if t in _meta:
+            return t
 
     raise TypeError('Type {} is not supported'.format(t))
+
+
+def get_type_hints(obj, globalns=None, localns=None):
+    spec = getfullargspec(obj)
+    annotations = spec.annotations
+    spec_defaults = spec.defaults or tuple()
+    spec_kwonlydefaults = spec.kwonlydefaults or {}
+    defaults = dict(**spec_kwonlydefaults,
+                    **{k: v for k, v in zip(spec.args, spec_defaults)})
+
+    ret = {}
+    for key, value in annotations.items():
+        ret[key] = _type_transform(value)
+
+        if key in defaults and defaults[key] is None:
+            ret[key] = Optional[ret[key]]
+
+    return ret
+
+
+def _type_repr(obj):
+    if isinstance(obj, type):
+        if obj.__module__ == 'builtins':
+            return obj.__qualname__
+    return repr(obj)
 
 
 # The classes have two requirements:
@@ -38,24 +75,32 @@ class _CollectionType(type):
     __slots__ = tuple()
 
     @classmethod
-    def __prepare__(mcs, name, bases):
+    def __prepare__(mcs, name, bases, **kwargs):
         origin = 'typing.' + name
         slots = ('__args__', )
 
-        def transform(instance, params):
-            instance.__args__ = params
-            return instance
+        def _repr(instance):
+            args = ", ".join([_type_repr(a) for a in instance.__args__])
+            return '{}[{}]'.format(instance.__origin__, args)
 
         return dict(__origin__=origin,
                     __slots__=slots,
-                    __transform__=transform)
+                    __repr__=_repr)
 
-    def __init__(cls, name, bases, attrs):
-        super().__init__(name, bases, attrs)
+    def __new__(mcs, name, bases, attrs, **kwargs):
+        return super().__new__(mcs, name, bases, attrs)
+
+    def __init__(cls, name, bases, attrs, **kwargs):
+        super().__init__(name, bases, attrs, **kwargs)
+
+        if not hasattr(cls, '__transform__'):
+            raise NotImplementedError(
+                "{} doesn\'t implement '__transform__' function".format(cls))
 
         # Register itself
-        _supported[cls] = cls.__origin__
-        _meta.add(cls)
+        if 'no_register' not in kwargs or not kwargs['no_register']:
+            _supported_names[name] = cls
+            _meta.add(cls)
 
     def __getitem__(cls, params):
         if not isinstance(params, tuple):
@@ -73,26 +118,27 @@ class _CollectionType(type):
 
 class Union(metaclass=_CollectionType):
     def __transform__(self, params):
+        params = Union._flatten_params(params)
         param_len = len(params)
+
         if param_len == 0:
             raise TypeError('Cannot instantiate typing.Union')
 
         elif param_len == 1:
             return params[0]
 
-        print(params)
-        params = Union._flatten_params(params)
-        print(params)
         self.__args__ = params
         return self
 
     @staticmethod
     def _flatten_params(params):
-        new_params = []
-        for p in params:
+        waiting, new_params = [*params], []
+        while waiting:
+            p = waiting.pop(0)
+
             if isinstance(p, Union):
-                new_params.extend(p.__args__)
-            else:
+                waiting.extend(p.__args__)
+            elif p not in new_params:
                 new_params.append(p)
 
         return tuple(new_params)
@@ -106,3 +152,22 @@ class Optional(metaclass=_CollectionType):
                 'Got ' + params))
 
         return Union(params + (NoneType, ))
+
+
+class _SingleCollection(metaclass=_CollectionType, no_register=True):
+    def __transform__(self, params):
+        if len(params) != 1:
+            raise TypeError((
+                'Too many parameters for List;'
+                ' got {}').format(params))
+
+        self.__args__ = params
+        return self
+
+
+class List(_SingleCollection):
+    pass
+
+
+class Set(_SingleCollection):
+    pass

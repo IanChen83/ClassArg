@@ -1,21 +1,29 @@
 import pytest
-from classarg._typing import Union, Optional
+from classarg._typing import Union, Optional, List, Set
 
 
 NoneType = type(None)
+_builtin = set((int, float, bool, str, NoneType))
 
 
 def _gen_types_testcase():
+    # Correct cases
     yield Union, int, int
     yield Union, None, NoneType
+    yield Union, (int, str), ('typing.Union', (int, str))
+    yield Optional, None, NoneType
     yield Optional, int, ('typing.Union', (int, NoneType))
+    yield List, int, ('typing.List', (int, ))
+    yield Set, int, ('typing.Set', (int, ))
 
-
-_builtin = set((int, float, bool, str, type(None)))
+    # Failed cases
+    yield Union, tuple(), TypeError()
+    yield Optional, (int, str), TypeError()
+    yield List, (int, str), TypeError()
 
 
 @pytest.mark.parametrize('type1, type2, expect', list(_gen_types_testcase()))
-def test_parse(type1, type2, expect):
+def test_parse_metaclass(type1, type2, expect):
     if isinstance(expect, Exception):
         with pytest.raises(Exception) as e_info:
             ret = type1[type2]
@@ -31,5 +39,4 @@ def test_parse(type1, type2, expect):
             res = type1[type2]
             type_name, types = expect
 
-            assert str(res.__origin__) == type_name
-            assert set(res.__args__) == set(types)
+            assert (str(res.__origin__), res.__args__) == (type_name, types)
