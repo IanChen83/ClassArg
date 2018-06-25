@@ -1,5 +1,5 @@
 import pytest
-from classarg._typing.py34 import _type_transform
+from classarg._typing import _type_transform
 
 
 NoneType = type(None)
