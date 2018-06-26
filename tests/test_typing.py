@@ -1,5 +1,5 @@
 import pytest
-from classarg._typing import Union, Optional, List, Set, normalize_type
+from classarg._typing import Union, Optional, List, Set, Tuple, normalize_type
 
 
 NoneType = type(None)
@@ -11,10 +11,12 @@ def _gen_types_testcase():
     yield Union, int, int
     yield Union, None, NoneType
     yield Union, (int, str), ('typing.Union', (int, str))
+    yield Union, (int, str, int), ('typing.Union', (int, str))
     yield Optional, None, NoneType
     yield Optional, int, ('typing.Union', (int, NoneType))
     yield List, int, ('typing.List', (int, ))
     yield Set, int, ('typing.Set', (int, ))
+    yield Tuple, (int, str), ('typing.Tuple', (int, str))
 
     # Failed cases
     yield Union, tuple(), TypeError()
@@ -47,10 +49,12 @@ def _gen_type_str_testcase():
     yield 'Union[None]', NoneType
     yield 'Union[Union[None]]', NoneType
     yield 'Union[int, str]', ('typing.Union', (int, str))
+    yield 'Union[int, str, int]', ('typing.Union', (int, str))
     yield 'Optional[None]', NoneType
     yield 'Optional[int]', ('typing.Union', (int, NoneType))
     yield 'List[int]', ('typing.List', (int, ))
     yield 'Set[int]', ('typing.Set', (int, ))
+    yield 'Tuple[int]', ('typing.Tuple', (int, ))
 
 
 @pytest.mark.parametrize('type_str, expect', list(_gen_type_str_testcase()))

@@ -2,14 +2,13 @@ import sys
 from types import SimpleNamespace
 from inspect import getfullargspec, isfunction, ismethod, isclass
 
-from ._typing import get_type_hints, Union, Optional
+from ._typing import get_type_hints
 
 
 __all__ = (
     'match',
     'run',
     'parse',
-    'parse_annotation',
     'validate',
 )
 
@@ -20,6 +19,26 @@ def validate(func, kwargs):
 
     for validate_func in func._classarg_val:
         validate_func(func=func, match=kwargs)
+
+
+def _get_normalized_spec(func):
+    spec = getfullargspec(func)
+    ret = {
+        'args': tuple(),
+        'varargs': None,
+        'varkw': None,
+        'defaults': tuple(),
+        'kwonlyargs': tuple(),
+        'kwonlydefaults': dict(),
+        'annotations': dict(),
+    }
+
+    for key in ret:
+        value = getattr(spec, key)
+        if value:
+            ret[key] = value
+
+    return SimpleNamespace(**ret)
 
 
 # We follow this cheat sheet
@@ -34,45 +53,16 @@ def validate(func, kwargs):
 #
 # 3. misc:
 #    Union, Optional
-def parse_annotation(func):
-    annotations = get_type_hints(func)
-    return annotations
-
-
-def _get_normalized_spec(func, skip_annotation=False):
-    spec = getfullargspec(func)
-    ret = {
-        'args': tuple(),
-        'varargs': None,
-        'varkw': None,
-        'defaults': tuple(),
-        'kwonlyargs': tuple(),
-        'kwonlydefaults': dict(),
-    }
-
-    for key in ret:
-        value = getattr(spec, key)
-        if value:
-            ret[key] = value
-
-    if skip_annotation:
-        ret['annotations'] = dict()
-    else:
-        ret['annotations'] = parse_annotation(func)
-
-    return SimpleNamespace(**ret)
-
-
-def parse(func, *, skip_annotation=False):
+def parse(func, *, skip_type_hints=False):
     if isfunction(func):
-        spec = _get_normalized_spec(func, skip_annotation)
+        spec = _get_normalized_spec(func)
 
     elif ismethod(func):
-        spec = _get_normalized_spec(func, skip_annotation)
+        spec = _get_normalized_spec(func)
         del spec.args[0]
 
     elif isclass(func):
-        spec = _get_normalized_spec(func.__init__, skip_annotation)
+        spec = _get_normalized_spec(func.__init__)
         del spec.args[0]
 
         if func.__init__ is object.__init__:
@@ -80,11 +70,20 @@ def parse(func, *, skip_annotation=False):
             spec.varkw = None
 
     elif hasattr(func, '__call__'):
-        spec = _get_normalized_spec(func.__call__, skip_annotation)
+        spec = _get_normalized_spec(func.__call__)
         del spec.args[0]
 
     else:
         raise TypeError('Could not determine the signature of ' + str(func))
+
+    if skip_type_hints:
+        spec.annotations = {}
+
+    else:
+        try:
+            spec.annotations = get_type_hints(spec)
+        except TypeError:
+            spec.annotations = {}  # Silently fail?
 
     return spec
 

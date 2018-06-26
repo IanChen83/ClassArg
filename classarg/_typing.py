@@ -1,6 +1,4 @@
 # Some code are modified from cpython's typing module.
-from inspect import getfullargspec
-
 from .utils import compatible_with
 
 __all__ = (
@@ -10,6 +8,7 @@ __all__ = (
     'Optional',
     'List',
     'Set',
+    'Tuple',
 )
 
 
@@ -69,31 +68,50 @@ def normalize_type(obj):
     return _normalize_meta_type(obj)
 
 
-def get_type_hints(obj, globalns=None, localns=None):
-    spec = getfullargspec(obj)
+def infer_default_type(value):
+    t = type(value)
+    if t in _builtin:
+        return t
+    elif t in _aux_mapping:
+        return _aux_mapping[t][tuple(infer_default_type(v)
+                                     for v in value)]
+
+
+def get_type_hints(spec):
     annotations = spec.annotations
     spec_defaults = spec.defaults or tuple()
     spec_kwonlydefaults = spec.kwonlydefaults or {}
     defaults = dict(spec_kwonlydefaults,
-                    **{k: v for k, v in zip(spec.args, spec_defaults)})
+                    **{k: v for k, v in zip(reversed(spec.args),
+                                            reversed(spec_defaults))})
 
     ret = {}
     for key, value in annotations.items():
-        ret[key] = normalize_type(value)
+        try:
+            ret[key] = normalize_type(value)
+        except TypeError:
+            pass
 
-        if key in defaults and defaults[key] is None:
+    for key, value in defaults.items():
+        if key in ret and value is None:
             ret[key] = Optional[ret[key]]
+
+        elif key not in ret:
+            try:
+                ret[key] = infer_default_type(value)
+            except TypeError:
+                pass
 
     return ret
 
 
 # The classes have two requirements:
-# 1. str(cls.__origin__) == typing.Class
+# 1. cls.__origin__ is typing.Class
 # 2. type(cls.__args__) is tuple
-if compatible_with(3, 5):
+if compatible_with(3, 5):  # has typing module
     import typing
-    from typing import Union, Optional, List, Set
-    for name in ('Union', 'Optional', 'List', 'Set'):
+    from typing import Union, Optional, List, Set, Tuple
+    for name in ('Union', 'Optional', 'List', 'Set', 'Tuple'):
         cls = getattr(typing, name)
         _supported_names[name] = cls
         _meta.add(cls)
@@ -208,5 +226,9 @@ else:
     class Set(_SingleCollection):
         pass
 
+    class Tuple(metaclass=_CollectionType):
+        pass
+
 _aux_mapping[list] = List
 _aux_mapping[set] = Set
+_aux_mapping[tuple] = Tuple
