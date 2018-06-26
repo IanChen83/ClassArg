@@ -137,7 +137,8 @@ else:
                 return '{}[{}]'.format(instance.__origin__, args)
 
             def eq(instance, other):
-                if not isinstance(other, _CollectionType):
+                if not (hasattr(other, '_name') and
+                        hasattr(other, '__args__')):
                     return False
                 return (instance._name == other._name and
                         instance.__args__ == other.__args__)
