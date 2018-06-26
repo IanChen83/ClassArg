@@ -1,5 +1,16 @@
 import sys
-from inspect import getfullargspec, isfunction, ismethod, isclass, FullArgSpec
+from types import SimpleNamespace
+from inspect import getfullargspec, isfunction, ismethod, isclass
+
+from ._typing import get_type_hints
+
+
+__all__ = (
+    'match',
+    'run',
+    'parse',
+    'validate',
+)
 
 
 def validate(func, kwargs):
@@ -10,33 +21,75 @@ def validate(func, kwargs):
         validate_func(func=func, match=kwargs)
 
 
-def parse(func):
+def _get_normalized_spec(func):
+    spec = getfullargspec(func)
+    ret = {
+        'args': tuple(),
+        'varargs': None,
+        'varkw': None,
+        'defaults': tuple(),
+        'kwonlyargs': tuple(),
+        'kwonlydefaults': dict(),
+        'annotations': dict(),
+    }
+
+    for key in ret:
+        value = getattr(spec, key)
+        if value:
+            ret[key] = value
+
+    return SimpleNamespace(**ret)
+
+
+# We follow this cheat sheet
+# http://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html#built-in-types
+# but only support the following types
+#
+# 1. built-in types:
+#    int, float, bool, str
+#
+# 2. collections:
+#    List, Tuple, Set
+#
+# 3. misc:
+#    Union, Optional
+def parse(func, *, skip_type_hints=False):
     if isfunction(func):
-        spec = getfullargspec(func)
+        spec = _get_normalized_spec(func)
 
     elif ismethod(func):
-        spec = getfullargspec(func)
-        del spec.args[0]  # remove first argument
+        spec = _get_normalized_spec(func)
+        del spec.args[0]
 
     elif isclass(func):
-        raise NotImplementedError()
+        spec = _get_normalized_spec(func.__init__)
+        del spec.args[0]
+
+        if func.__init__ is object.__init__:
+            spec.varargs = None
+            spec.varkw = None
 
     elif hasattr(func, '__call__'):
-        spec = getfullargspec(func)
-        del spec.args[0]  # remove first argument
+        spec = _get_normalized_spec(func.__call__)
+        del spec.args[0]
 
     else:
         raise TypeError('Could not determine the signature of ' + str(func))
 
+    if skip_type_hints:
+        spec.annotations = {}
+    else:
+        spec.annotations = get_type_hints(spec)
+
     return spec
 
 
-def match(func, args=None):
-    if isinstance(func, FullArgSpec):
+def match(func, *, args=None, skip_type_hints=False):
+    if isinstance(func, SimpleNamespace):
         spec = func
     else:
-        spec = parse(func)
-    args = args or sys.argv[1:]
+        spec = parse(func, skip_type_hints)
+    args = args if args is not None else sys.argv[1:]
 
     # TODO: match spec and arguments
 

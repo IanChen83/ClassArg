@@ -1,11 +1,7 @@
-import sys
-
 from .core import parse, match, run
+from .utils import compatible_with
 
 __all__ = ('parse', 'run', 'match')
-
-
-# sys.modules[__name__].__call__ = run
 
 
 # The following variables will be used in PyPI index.
@@ -21,3 +17,30 @@ __email__ = 'patrickchen1994@gmail.com'
 
 # Prototype, Development, or Production
 __status__ = 'Prototype'
+
+
+# classarg(func) only available in python >= 3.5
+if compatible_with(3, 5):
+    import sys
+
+    class Main(sys.modules[__name__].__class__):
+        __call__ = run
+
+    sys.modules[__name__].__class__ = Main
+
+else:
+    import sys
+    from types import ModuleType
+
+    class Main(ModuleType):
+        def __init__(self, module):
+            super().__init__(module.__name__, module.__doc__)
+            self._module = module
+
+        def __getattr__(self, name):
+            return getattr(self._module, name)
+
+        def __call__(self, *args, **kwargs):
+            return run(*args, **kwargs)
+
+    sys.modules[__name__] = Main(sys.modules[__name__])
