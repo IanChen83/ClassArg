@@ -227,7 +227,9 @@ else:
         pass
 
     class Tuple(metaclass=_CollectionType):
-        pass
+        def __transform__(self, params):
+            self.__args__ = params
+            return self
 
 _aux_mapping[list] = List
 _aux_mapping[set] = Set
