@@ -84,12 +84,12 @@ def parse(func, *, skip_type_hints=False):
     return spec
 
 
-def match(func, args=None):
+def match(func, *, args=None, skip_type_hints=False):
     if isinstance(func, SimpleNamespace):
         spec = func
     else:
-        spec = parse(func)
-    args = args or sys.argv[1:]
+        spec = parse(func, skip_type_hints)
+    args = args if args is not None else sys.argv[1:]
 
     # TODO: match spec and arguments
 
