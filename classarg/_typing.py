@@ -136,8 +136,15 @@ else:
                 args = ", ".join([_type_repr(a) for a in instance.__args__])
                 return '{}[{}]'.format(instance.__origin__, args)
 
+            def eq(instance, other):
+                if not isinstance(other, _CollectionType):
+                    return False
+                return (instance._name == other._name and
+                        instance.__args__ == other.__args__)
+
             return dict(__slots__=slots,
-                        __repr__=_repr)
+                        __repr__=_repr,
+                        __eq__=eq)
 
         def __new__(cls, name, bases, attrs, **kwargs):
             return super().__new__(cls, name, bases, attrs)
