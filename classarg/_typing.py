@@ -87,6 +87,9 @@ def get_type_hints(obj, globalns=None, localns=None):
     return ret
 
 
+# The classes have two requirements:
+# 1. str(cls.__origin__) == typing.Class
+# 2. type(cls.__args__) is tuple
 if compatible_with(3, 5):
     import typing
     from typing import Union, Optional, List, Set
@@ -104,9 +107,6 @@ else:
                 return obj.__qualname__
         return repr(obj)
 
-    # The classes have two requirements:
-    # 1. str(cls.__origin__) == typing.Class
-    # 2. type(cls.__args__) is tuple
     class _CollectionType(type):
         __slots__ = tuple()
 
@@ -190,7 +190,7 @@ else:
                     'Optional[t] requires a single type.'
                     'Got ' + params))
 
-            return Union(params + (NoneType, ))
+            return Union[params + (NoneType, )]
 
     class _SingleCollection(metaclass=_CollectionType, no_register=True):
         def __transform__(self, params):
