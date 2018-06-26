@@ -171,7 +171,8 @@ else:
 
         @staticmethod
         def _flatten_params(params):
-            waiting, new_params = [*params], []
+            waiting, new_params = [], []
+            waiting.extend(params)
             while waiting:
                 p = waiting.pop(0)
 
