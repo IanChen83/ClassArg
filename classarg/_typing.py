@@ -142,8 +142,12 @@ else:
                 return (instance._name == other._name and
                         instance.__args__ == other.__args__)
 
+            def _hash(instance):
+                return hash((instance._name, ) + instance.__args__)
+
             return dict(__slots__=slots,
                         __repr__=_repr,
+                        __hash__=_hash,
                         __eq__=eq)
 
         def __new__(cls, name, bases, attrs, **kwargs):
