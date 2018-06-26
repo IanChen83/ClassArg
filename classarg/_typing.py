@@ -121,8 +121,8 @@ else:
             return dict(__slots__=slots,
                         __repr__=_repr)
 
-        def __new__(mcs, name, bases, attrs, **kwargs):
-            return super().__new__(mcs, name, bases)
+        def __new__(cls, name, bases, attrs, **kwargs):
+            return super().__new__(cls, name, bases, attrs)
 
         def __init__(cls, name, bases, attrs, **kwargs):
             super().__init__(name, bases, attrs)
