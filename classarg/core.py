@@ -78,12 +78,8 @@ def parse(func, *, skip_type_hints=False):
 
     if skip_type_hints:
         spec.annotations = {}
-
     else:
-        try:
-            spec.annotations = get_type_hints(spec)
-        except TypeError:
-            spec.annotations = {}  # Silently fail?
+        spec.annotations = get_type_hints(spec)
 
     return spec
 
