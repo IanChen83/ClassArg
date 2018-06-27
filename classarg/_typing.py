@@ -66,7 +66,8 @@ def normalize_type(obj):
             obj = origin[args]
             obj.__origin__ = origin
 
-        if obj.__origin__ in _meta:  # must be instance of meta types
+        # must be instance of meta types
+        if obj.__origin__ in _meta and isinstance(obj.__args__, tuple):
             obj.__args__ = tuple(normalize_type(arg)
                                  for arg in obj.__args__)
             return obj
@@ -219,7 +220,7 @@ else:
                 p = waiting.pop(0)
 
                 if isinstance(p, Union):
-                    waiting.extend(p.__args__)
+                    waiting = list(p.__args__) + waiting
                 elif p not in new_params:
                     new_params.append(p)
 

@@ -51,6 +51,7 @@ def _gen_type_str_testcase():
     yield 'Union[int]', int
     yield 'Union[None]', NoneType
     yield 'Union[Union[None]]', NoneType
+    yield 'Union[Union[int, str], str]', ('typing.Union', (int, str))
     yield 'Union[int, str]', ('typing.Union', (int, str))
     yield 'Union[int, str, int]', ('typing.Union', (int, str))
     yield 'Optional[None]', NoneType
