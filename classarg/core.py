@@ -1,8 +1,7 @@
+import re
 import sys
 from types import SimpleNamespace
 from inspect import getfullargspec, isfunction, ismethod, isclass
-
-from ._typing import get_type_hints
 
 
 __all__ = (
@@ -10,7 +9,12 @@ __all__ = (
     'run',
     'parse',
     'validate',
+    'ArgumentError',
 )
+
+
+class ArgumentError(Exception):
+    pass
 
 
 def validate(func, kwargs):
@@ -79,26 +83,59 @@ def parse(func, *, skip_type_hints=False):
     if skip_type_hints:
         spec.annotations = {}
     else:
-        spec.annotations = get_type_hints(spec)
+        from ._typing import load_type_hints  # load module on demand
+        load_type_hints(spec)
 
     return spec
 
 
-def match(func, *, args=None, skip_type_hints=False):
+pattern = re.compile(r'^-{1,2}([^=\s]+)(?==?(\S*))')
+def _parse_one_arg(arg): # noqa
+    if arg == '--':
+        return arg
+
+    matched = pattern.search(arg)
+    if matched is None:
+        return arg
+
+    key, value = matched.groups()
+    value = True if value == '' else value
+    return {key: value}
+
+
+def _match_args(spec, args):
+    ret = []
+    for arg in args:
+        arg = _parse_one_arg(arg)
+
+        if ret and isinstance(ret[-1], dict) and ret[-1]:
+            pass
+
+    return ret
+
+
+def match(func, *, args=None, **options):
+    args = args if args is not None else sys.argv[1:]
     if isinstance(func, SimpleNamespace):
         spec = func
     else:
+        skip_type_hints = options.get('skip_type_hints', False)
         spec = parse(func, skip_type_hints)
-    args = args if args is not None else sys.argv[1:]
 
-    # TODO: match spec and arguments
+    _match_args(spec, args)
 
     return dict()
 
 
-def run(func, args=None):
-    spec = parse(func)
-    matcher = match(spec, args)
+def run(func, *, args=None, **options):
+    skip_type_hints = options.get('skip_type_hints')
+
+    spec = parse(func,
+                 args=args,
+                 skip_type_hints=skip_type_hints)
+    matcher = match(spec,
+                    args=args,
+                    skip_type_hints=skip_type_hints)
     validate(func, matcher)
 
     return func()

@@ -77,3 +77,32 @@ def test_parse(func, expect):
 
     else:
         assert core.parse(func) == expect
+
+
+def _gen_parse_argv_testcase():
+    yield '中文', '中文'
+    yield '--', '--'
+    yield '-f', {'f': True}
+    yield '--no-error', {'no-error': True}
+    yield '--verbose', {'verbose': True}
+    yield '-x=1', {'x': '1'}
+    yield '--retry=2', {'retry': '2'}
+    yield '--no_error', {'no_error': True}
+    yield '--retry_times=2', {'retry_times': '2'}
+    yield '--help=中文', {'help': '中文'}
+    yield '--中文=中文', {'中文': '中文'}
+    yield '--x2=2', {'x2': '2'}
+    yield '--2d=2', {'2d': '2'}
+
+
+@pytest.mark.parametrize('args, expect', list(_gen_parse_argv_testcase()))
+def test_parse_argv(args, expect):
+    if isinstance(expect, Exception):
+        with pytest.raises(Exception) as e_info:
+            ret = core._parse_one_arg(args)
+            print(ret)  # only print if not raising error
+
+        assert isinstance(expect, e_info.type)
+
+    else:
+        assert core._parse_one_arg(args) == expect

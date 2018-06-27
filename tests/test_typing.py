@@ -1,5 +1,8 @@
 import pytest
-from classarg._typing import Union, Optional, List, Set, Tuple, normalize_type
+from classarg._typing import (
+    Union, Optional, List, Set, Tuple,
+    normalize_type, infer_default_type,
+)
 
 
 NoneType = type(None)
@@ -55,10 +58,12 @@ def _gen_type_str_testcase():
     yield 'List[int]', ('typing.List', (int, ))
     yield 'Set[int]', ('typing.Set', (int, ))
     yield 'Tuple[int]', ('typing.Tuple', (int, ))
+    yield 'Tuple[]', TypeError()
+    yield 'Tuple', TypeError()
 
 
 @pytest.mark.parametrize('type_str, expect', list(_gen_type_str_testcase()))
-def test_parse_type_str(type_str, expect):
+def test_eval_type_from_str(type_str, expect):
     if isinstance(expect, Exception):
         with pytest.raises(Exception) as e_info:
             ret = normalize_type(type_str)
@@ -75,3 +80,18 @@ def test_parse_type_str(type_str, expect):
             type_name, types = expect
 
             assert (str(res.__origin__), res.__args__) == (type_name, types)
+
+
+def _gen_default_testcase():
+    yield 3, int
+    yield 3.0, float
+    yield True, bool
+    yield 'asdf', str
+    yield None, None
+    yield NoneType, None
+    yield (5, 3), Tuple[int, int]
+
+
+@pytest.mark.parametrize('default, expect', list(_gen_default_testcase()))
+def test_infer_default_type(default, expect):
+    assert infer_default_type(default) == expect

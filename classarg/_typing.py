@@ -3,7 +3,7 @@ from .utils import compatible_with
 
 __all__ = (
     'normalize_type',
-    'get_type_hints',
+    'load_type_hints',
     'Union',
     'Optional',
     'List',
@@ -14,7 +14,7 @@ __all__ = (
 
 NoneType = type(None)
 
-_builtin = {int, float, bool, str, NoneType}
+_builtin = {int, float, bool, str}
 _meta = set()
 _supported_names = {
     'int': int,
@@ -24,6 +24,16 @@ _supported_names = {
     'None': None,
     'NoneType': NoneType,
 }
+
+# Starts from python 3.7,
+#   Tuple[...].__origin__ = tuple
+#   List[...].__origin__ = list
+#   Set[...].__origin__ = set
+#
+# so we have to maps thme to
+#   Tuple[...].__origin__ = Tuple
+#   List[...].__origin__ = List
+#   Set[...].__origin__ = Set
 _aux_mapping = {}
 
 
@@ -38,25 +48,8 @@ def _eval_type_from_str(obj):
         raise TypeError('Failed to parse type from string')
 
 
-def _normalize_meta_type(obj):
-    if hasattr(obj, '__origin__'):  # must be instance of meta types
-        if obj.__origin__ in _aux_mapping:
-            # Create a new obj because it's not good to modify obj.__origin__
-            # directly.
-            origin, args = _aux_mapping[obj.__origin__], obj.__args__
-            obj = origin[args]
-            obj.__origin__ = origin
-
-        if obj.__origin__ in _meta:
-            obj.__args__ = tuple(normalize_type(arg)
-                                 for arg in obj.__args__)
-            return obj
-
-    raise TypeError('Failed to normalize {}'.format(obj))
-
-
 def normalize_type(obj):
-    if obj is None:
+    if obj is None or obj is NoneType:
         return NoneType
 
     elif obj in _builtin:
@@ -65,19 +58,38 @@ def normalize_type(obj):
     elif isinstance(obj, str):
         return _eval_type_from_str(obj)
 
-    return _normalize_meta_type(obj)
+    elif hasattr(obj, '__origin__'):
+        if obj.__origin__ in _aux_mapping:
+            # Clone obj because it's not good to modify
+            # obj.__origin__ directly.
+            origin, args = _aux_mapping[obj.__origin__], obj.__args__
+            obj = origin[args]
+            obj.__origin__ = origin
+
+        if obj.__origin__ in _meta:  # must be instance of meta types
+            obj.__args__ = tuple(normalize_type(arg)
+                                 for arg in obj.__args__)
+            return obj
+
+    raise TypeError('Failed to normalize {}'.format(obj))
 
 
 def infer_default_type(value):
+    """Infer type hint from default value.
+
+    Returning None means failed inferal.
+    """
     t = type(value)
     if t in _builtin:
         return t
-    elif t in _aux_mapping:
-        return _aux_mapping[t][tuple(infer_default_type(v)
-                                     for v in value)]
+    elif t is tuple:
+        return Tuple[tuple(infer_default_type(v)
+                           for v in value)]
+
+    return None
 
 
-def get_type_hints(spec):
+def load_type_hints(spec):
     annotations = spec.annotations
     spec_defaults = spec.defaults or tuple()
     spec_kwonlydefaults = spec.kwonlydefaults or {}
@@ -102,7 +114,7 @@ def get_type_hints(spec):
             except TypeError:
                 pass
 
-    return ret
+    spec.annotations = ret
 
 
 # The classes have two requirements:
