@@ -1,13 +1,9 @@
 import re
-from textwrap import dedent, TextWrapper
+from textwrap import dedent
 
 
-def _is_valid_alias(spec, key):
-    if key in spec.args or key == spec.varargs:
-        return False
-
-    return (key == spec.varkw or
-            key in spec.kwonlyargs)
+def _is_valid_alias_source(spec, key):
+    return key != spec.varkw
 
 
 def _is_valid_arg(spec, key):
@@ -18,7 +14,7 @@ def _is_valid_arg(spec, key):
 
 
 pattern1 = re.compile(r'^-{,2}([^\d\W]\w*):\s{1,}(.+)')
-pattern2 = re.compile(r'^(-{1,2}[^\d\W]\w*):\s{1,}(-{1,2}[^\d\W]\w*)$')
+pattern2 = re.compile(r'^-{,2}([^\d\W]\w*):\s{1,}(-{1,2}[^\d\W]\w*)$')
 def _normalize_argument_docs(spec, arg_docs): # noqa
     """Parse arg docs into entries and aliases
 
@@ -35,6 +31,10 @@ def _normalize_argument_docs(spec, arg_docs): # noqa
 
     The action when users specify -a in the CLI depends on the role and type
     of --aa.
+
+    If kwargs exists, there can be aliases in the format of arg entry. These
+    aliases will be added into available switches. If there's no kwargs, this
+    type of alias is not allowed.
     """
     waiting = arg_docs.split('\n')
     docs, aliases = {}, {}
@@ -46,7 +46,7 @@ def _normalize_argument_docs(spec, arg_docs): # noqa
         if matched is None:
             if last_key in docs:
                 line = ' ' + line.strip()
-                docs[last_key] = '{} {}'.format(
+                docs[last_key] = '{}\n{}'.format(
                     docs[last_key].rstrip(), line.lstrip())
         else:
             key, value = matched.groups()
@@ -55,16 +55,22 @@ def _normalize_argument_docs(spec, arg_docs): # noqa
                 # arg_docs values don't start with '-'
                 key, value = key.lstrip('-'), value.lstrip('-')
                 if _is_valid_arg(spec, key):
-                    raise ValueError('Alias key has bee used.')
+                    raise ValueError(
+                        "Key '{}' for aliasing has bee used.".format(key))
 
-                if _is_valid_alias(spec, value):
+                if _is_valid_alias_source(spec, value):
                     aliases[key] = value
                     last_key = key
                 else:
-                    print(key, value)
                     last_key = None
             else:
                 if _is_valid_arg(spec, key):
+                    docs[key] = value
+                    last_key = key
+                elif spec.varkw is not None:
+                    spec.kwonlyargs.append(key)
+                    spec.kwonlydefaults[key] = False
+                    spec.annotations[key] = bool
                     docs[key] = value
                     last_key = key
                 else:
@@ -73,18 +79,16 @@ def _normalize_argument_docs(spec, arg_docs): # noqa
     return docs, aliases
 
 
-wrapper = TextWrapper(initial_indent="  ")
 def load_doc_hints(spec, docstring): # noqa
-    *intros, docs = [dedent(sec)
-                     for sec in docstring.strip().split('\n\n')]
+    *intros, docs = [dedent(sec).strip()
+                     for sec in docstring.split('\n\n')]
 
-    intros = [wrapper.wrap(para) for para in intros]
     spec.intros = intros
 
     arg_docs, aliases = _normalize_argument_docs(spec, docs)
 
     if not arg_docs and not aliases:
-        spec.intros.append(wrapper.wrap(docs))
+        spec.intros.append(docs.strip())
     spec.arg_docs = arg_docs
     spec.aliases = aliases
 

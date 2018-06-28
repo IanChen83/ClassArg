@@ -92,7 +92,7 @@ def _gen_parse_argv_testcase():
     yield '--help=中文', {'help': '中文'}
     yield '--中文=中文', {'中文': '中文'}
     yield '--x2=2', {'x2': '2'}
-    yield '--2d=2', {'2d': '2'}
+    yield '--2d=2', core.ArgumentError()
 
 
 @pytest.mark.parametrize('args, expect', list(_gen_parse_argv_testcase()))
