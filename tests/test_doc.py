@@ -1,5 +1,4 @@
 from types import SimpleNamespace
-import textwrap
 
 import pytest
 
@@ -13,19 +12,19 @@ def _gen_parse_doc_testcase():
         'sed urna quis ante luctus sodales a vel felis.'
     )
 
-    # Single line, without arg_docs
+    # Single line, without argument_docs
     str0 = """Loren ipsum dolor sit amet."""
-    expect0 = dict(intros=[tiny_str])
+    expect0 = dict(descriptions=[tiny_str])
 
-    # Multiple sections, without arg_docs
+    # Multiple sections, without argument_docs
     str1 = """Loren ipsum dolor sit amet.
 
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
         sed urna quis ante luctus sodales a vel felis.
         """
-    expect1 = dict(intros=[tiny_str, long_str])
+    expect1 = dict(descriptions=[tiny_str, long_str])
 
-    # Multiple sections, arg_docs
+    # Multiple sections, argument_docs
     # key not found in the spec
     str2 = """
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
@@ -36,11 +35,11 @@ def _gen_parse_doc_testcase():
         bbb:  Loren ipsum dolor sit amet.
         ccc:  Loren ipsum dolor sit amet.
         """
-    expect2 = dict(intros=[long_str],
-                   arg_docs=dict(aaa=tiny_str,
-                                 bbb=tiny_str,
-                                 ccc=tiny_str,
-                                 xxx='pass'))
+    expect2 = dict(descriptions=[long_str],
+                   argument_docs=dict(aaa=tiny_str,
+                                      bbb=tiny_str,
+                                      ccc=tiny_str,
+                                      xxx='pass'))
 
     # Ignore keys not found in the spec
     # Recognize continued lines
@@ -57,10 +56,10 @@ def _gen_parse_doc_testcase():
         ccc:  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
               sed urna quis ante luctus sodales a vel felis.
         """
-    expect3 = dict(intros=[long_str],
-                   arg_docs=dict(aaa=long_str,
-                                 bbb=long_str,
-                                 ccc=long_str))
+    expect3 = dict(descriptions=[long_str],
+                   argument_docs=dict(aaa=long_str,
+                                      bbb=long_str,
+                                      ccc=long_str))
 
     # Multiple aliases
     str4 = """
@@ -77,10 +76,10 @@ def _gen_parse_doc_testcase():
         ccc:  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
               sed urna quis ante luctus sodales a vel felis.
         """
-    expect4 = dict(intros=[long_str],
-                   arg_docs=dict(aaa=long_str,
-                                 bbb=long_str,
-                                 ccc=long_str),
+    expect4 = dict(descriptions=[long_str],
+                   argument_docs=dict(aaa=long_str,
+                                      bbb=long_str,
+                                      ccc=long_str),
                    aliases=dict(d1='ddd',
                                 d2='ddd',
                                 e='eee'))
@@ -103,10 +102,10 @@ def _gen_parse_doc_testcase():
         ccc:  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
               sed urna quis ante luctus sodales a vel felis.
         """
-    expect5 = dict(intros=[long_str],
-                   arg_docs=dict(aaa=long_str,
-                                 bbb=long_str,
-                                 ccc=long_str))
+    expect5 = dict(descriptions=[long_str],
+                   argument_docs=dict(aaa=long_str,
+                                      bbb=long_str,
+                                      ccc=long_str))
 
     # Used alias
     str6 = """
@@ -125,6 +124,30 @@ def _gen_parse_doc_testcase():
         """
     expect6 = ValueError()
 
+    # Multiple sections, argument_docs
+    # headers, unrecognize header
+    str7 = """
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
+        sed urna quis ante luctus sodales a vel felis.
+
+        Returns:
+            xxx:  pass
+
+        Arguments:
+            aaa:  Loren ipsum dolor sit amet.
+            bbb:  Loren ipsum dolor sit amet.
+            ccc:  Loren ipsum dolor sit amet.
+
+        Optional Arguments:
+            xxx:  pass
+        """
+    return_str = 'Returns:\n    xxx:  pass'
+    expect7 = dict(descriptions=[long_str, return_str],
+                   argument_docs=dict(aaa=tiny_str,
+                                      bbb=tiny_str,
+                                      ccc=tiny_str,
+                                      xxx='pass'))
+
     yield str0, expect0
     yield str1, expect1
     yield str2, expect2
@@ -132,6 +155,7 @@ def _gen_parse_doc_testcase():
     yield str4, expect4
     yield str5, expect5
     yield str6, expect6
+    yield str7, expect7
 
 
 @pytest.mark.parametrize('docstring, expect', list(_gen_parse_doc_testcase()))

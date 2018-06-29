@@ -13,9 +13,11 @@ def _is_valid_arg(spec, key):
             key in spec.kwonlyargs)
 
 
-pattern1 = re.compile(r'^-{,2}([^\d\W]\w*):\s{1,}(.+)')
-pattern2 = re.compile(r'^-{,2}([^\d\W]\w*):\s{1,}(-{1,2}[^\d\W]\w*)$')
-def _normalize_argument_docs(spec, arg_docs): # noqa
+arg_doc_pattern = re.compile(r'^-{,2}([^\d\W]\w*):\s{1,}(.+)')
+alias_pattern = re.compile(r'^-{,2}([^\d\W]\w*):\s{1,}(-{1,2}[^\d\W]\w*)$')
+
+
+def _normalize_argument_docs(spec, section):
     """Parse arg docs into entries and aliases
 
     An arg entry has key in spec.{args, kwonlydefaults, varargs, varkw}
@@ -36,13 +38,13 @@ def _normalize_argument_docs(spec, arg_docs): # noqa
     aliases will be added into available switches. If there's no kwargs, this
     type of alias is not allowed.
     """
-    waiting = arg_docs.split('\n')
+    waiting = section.split('\n')
     docs, aliases = {}, {}
     last_key = None
 
     while waiting:
-        line = waiting.pop(0)
-        matched = pattern1.search(line) or pattern2.search(line)
+        line = waiting.pop(0).rstrip()
+        matched = arg_doc_pattern.search(line) or alias_pattern.search(line)
         if matched is None:
             if last_key in docs:
                 line = ' ' + line.strip()
@@ -79,18 +81,42 @@ def _normalize_argument_docs(spec, arg_docs): # noqa
     return docs, aliases
 
 
+candidate_headers_ending = (
+    'arg:',
+    'args:',
+    'argument:',
+    'arguments:',
+    'flag:',
+    'flags:',
+    'switch:',
+    'switches:',
+)
 def load_doc_hints(spec, docstring): # noqa
-    *intros, docs = [dedent(sec).strip()
-                     for sec in docstring.split('\n\n')]
+    spec.descriptions = []
+    spec.argument_docs = {}
+    spec.aliases = {}
 
-    spec.intros = intros
+    sections = [dedent(sec).strip()
+                for sec in docstring.split('\n\n')]
 
-    arg_docs, aliases = _normalize_argument_docs(spec, docs)
+    for section in sections:
+        if not section:
+            continue
 
-    if not arg_docs and not aliases:
-        spec.intros.append(docs.strip())
-    spec.arg_docs = arg_docs
-    spec.aliases = aliases
+        header, *contents = section.split('\n', maxsplit=1)
+        old_section = section
+        if any(header.lower().endswith(item)
+               for item in candidate_headers_ending) and contents:
+            section = dedent(contents[0])
+            print(section)
+
+        arg_docs, aliases = _normalize_argument_docs(spec, section)
+
+        if not arg_docs and not aliases:
+            spec.descriptions.append(old_section)
+        else:
+            spec.argument_docs.update(**arg_docs)
+            spec.aliases.update(**aliases)
 
     return spec
 
