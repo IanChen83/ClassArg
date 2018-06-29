@@ -1,5 +1,6 @@
 import re
-from textwrap import dedent
+from textwrap import dedent, TextWrapper
+from collections import defaultdict
 
 
 def _is_valid_alias_source(spec, key):
@@ -54,7 +55,7 @@ def _normalize_argument_docs(spec, section):
             key, value = matched.groups()
             if value.startswith('-'):
                 # for alias,
-                # arg_docs values don't start with '-'
+                # argument_docs values don't start with '-'
                 key, value = key.lstrip('-'), value.lstrip('-')
                 if _is_valid_arg(spec, key):
                     raise ValueError(
@@ -103,23 +104,77 @@ def load_doc_hints(spec, docstring): # noqa
         if not section:
             continue
 
+        original_section = section
         header, *contents = section.split('\n', maxsplit=1)
-        old_section = section
         if any(header.lower().endswith(item)
                for item in candidate_headers_ending) and contents:
             section = dedent(contents[0])
             print(section)
 
-        arg_docs, aliases = _normalize_argument_docs(spec, section)
+        argument_docs, aliases = _normalize_argument_docs(spec, section)
 
-        if not arg_docs and not aliases:
-            spec.descriptions.append(old_section)
+        if not argument_docs and not aliases:
+            spec.descriptions.append(original_section)
         else:
-            spec.argument_docs.update(**arg_docs)
+            spec.argument_docs.update(**argument_docs)
             spec.aliases.update(**aliases)
 
     return spec
 
 
-def print_help(spec):
-    pass
+def _get_one_argument_doc(key, doc, width, tabstop):
+    key = '  ' + key + '  '
+
+    if len(key) > tabstop:
+        wrapper = TextWrapper(
+            initial_indent=' '*tabstop,
+            width=width-tabstop, subsequent_indent=' '*tabstop)
+        return key.rstrip() + '\n' + '\n'.join(wrapper.wrap(doc))
+    else:
+        wrapper = TextWrapper(
+            initial_indent=' '*(tabstop-len(key)),
+            width=width-tabstop, subsequent_indent=' '*tabstop)
+
+        return key + '\n'.join(wrapper.wrap(doc))
+
+
+def _prefix_key(key):
+    return '-' + key if len(key) == 1 else '--' + key
+
+
+def get_normalized_docstring(spec, width=70, tabstop=16):
+    sections = []
+    if hasattr(spec, 'descriptions'):
+        sections.append('\n\n'.join(text for text in spec.descriptions))
+
+    if hasattr(spec, 'argument_docs') and hasattr(spec, 'aliases'):
+        items = ['Arguments:']
+        aliases = defaultdict(list)
+        for alias, source in spec.aliases.items():
+            aliases[source].append(_prefix_key(alias))
+
+        candidates = []
+        candidates.extend(spec.args)
+        if spec.varargs:
+            candidates.append(spec.varargs)
+        candidates.extend(spec.kwonlyargs)
+
+        for key in candidates:
+            if key not in spec.argument_docs:
+                continue
+            doc = spec.argument_docs[key]
+
+            name = key
+            if name in spec.kwonlyargs:
+                key = _prefix_key(key)
+
+            if name in aliases:
+                aliases[key].sort(key=len, reverse=True)
+                key = '{}, {}'.format(
+                    key, ', '.join(aliases[name]))
+
+            items.append(_get_one_argument_doc(key, doc, width, tabstop))
+
+        sections.append('\n'.join(items))
+
+    return '\n\n'.join(sections)

@@ -26,9 +26,14 @@ def _gen_parse_doc_testcase():
 
     # Multiple sections, argument_docs
     # key not found in the spec
+    # additional blank line
     str2 = """
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
         sed urna quis ante luctus sodales a vel felis.
+
+
+
+
 
         aaa:  Loren ipsum dolor sit amet.
         xxx:  pass
@@ -177,3 +182,61 @@ def test_normalize_argument_docs(docstring, expect):
         ret = doc.load_doc_hints(spec, docstring)
         for key, value in expect.items():
             assert getattr(ret, key) == value
+
+
+def test_get_normalized_docstring():
+    tiny_str = """Loren ipsum dolor sit amet."""
+    long_str = (
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris\n'
+        'sed urna quis ante luctus sodales a vel felis.'
+    )
+    return_str = 'Returns:\n  xxx:  pass'
+    spec = SimpleNamespace(
+        args=['aaa', 'bbb'], varargs='ccc', varkw='fff', defaults=(1,),
+        kwonlyargs=['ddd', 'eee', 'xxx'],
+        kwonlydefaults={'eee': 2, 'xxx': False},
+        annotations={'bbb': int, 'ddd': int, 'eee': int, 'xxx': bool},
+        descriptions=[long_str, return_str],
+        argument_docs=dict(aaa=tiny_str,
+                           bbb=tiny_str,
+                           ccc=tiny_str,
+                           ddd=tiny_str,
+                           xxx='pass'),
+        aliases=dict(x='xxx'))
+
+    expect7 = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
+sed urna quis ante luctus sodales a vel felis.
+
+Returns:
+  xxx:  pass
+
+Arguments:
+  aaa           Loren ipsum dolor sit amet.
+  bbb           Loren ipsum dolor sit amet.
+  ccc           Loren ipsum dolor sit amet.
+  --ddd         Loren ipsum dolor sit amet.
+  --xxx, -x     pass"""
+    expect8 = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
+sed urna quis ante luctus sodales a vel felis.
+
+Returns:
+  xxx:  pass
+
+Arguments:
+  aaa      Loren ipsum dolor sit amet.
+  bbb      Loren ipsum dolor sit amet.
+  ccc      Loren ipsum dolor sit amet.
+  --ddd    Loren ipsum dolor sit amet.
+  --xxx, -x
+           pass"""
+
+    res = doc.get_normalized_docstring(spec)
+    if res != expect7:
+        print(res)
+        assert res == expect7
+
+    res = doc.get_normalized_docstring(spec, tabstop=11)
+    if res != expect8:
+        print(res)
+        print(expect8)
+        assert res == expect8
