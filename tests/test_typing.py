@@ -70,6 +70,7 @@ def test_eval_type_from_str(type_str, expect):
             ret = normalize_type(type_str)
             print(ret)  # only print if not raising error
 
+        print(e_info)
         assert isinstance(expect, e_info.type)
 
     else:

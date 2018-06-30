@@ -3,7 +3,7 @@ from .utils import compatible_with
 
 __all__ = (
     'normalize_type',
-    'load_type_hints',
+    'parse_annotations',
     'Union',
     'Optional',
     'List',
@@ -49,6 +49,10 @@ def _eval_type_from_str(obj):
 
 
 def normalize_type(obj):
+    """
+    Only normalize values of type str, builtins, or those registered
+    in meta.
+    """
     if obj is None or obj is NoneType:
         return NoneType
 
@@ -58,7 +62,7 @@ def normalize_type(obj):
     elif isinstance(obj, str):
         return _eval_type_from_str(obj)
 
-    elif hasattr(obj, '__origin__'):
+    elif hasattr(obj, '__origin__') and hasattr(obj, '__args__'):
         if obj.__origin__ in _aux_mapping:
             # Clone obj because it's not good to modify
             # obj.__origin__ directly.
@@ -78,7 +82,7 @@ def normalize_type(obj):
 def infer_default_type(value):
     """Infer type hint from default value.
 
-    Returning None means failed inferal.
+    Returning None means failed inferral.
     """
     t = type(value)
     if t in _builtin:
@@ -90,32 +94,15 @@ def infer_default_type(value):
     return None
 
 
-def load_type_hints(spec):
-    annotations = spec.annotations
-    spec_defaults = spec.defaults or tuple()
-    spec_kwonlydefaults = spec.kwonlydefaults or {}
-    defaults = dict(spec_kwonlydefaults,
-                    **{k: v for k, v in zip(reversed(spec.args),
-                                            reversed(spec_defaults))})
-
-    ret = {}
+def parse_annotations(annotations):
+    type_hints = {}
     for key, value in annotations.items():
         try:
-            ret[key] = normalize_type(value)
+            type_hints[key] = normalize_type(value)
         except TypeError:
             pass
 
-    for key, value in defaults.items():
-        if key in ret and value is None:
-            ret[key] = Optional[ret[key]]
-
-        elif key not in ret:
-            try:
-                ret[key] = infer_default_type(value)
-            except TypeError:
-                pass
-
-    spec.annotations = ret
+    return type_hints
 
 
 # The classes have two requirements:
@@ -141,28 +128,31 @@ else:
     class _CollectionType(type):
         __slots__ = tuple()
 
+        @staticmethod
+        def _repr(instance):
+            args = ", ".join([_type_repr(a) for a in instance.__args__])
+            return '{}[{}]'.format(instance.__origin__, args)
+
+        @staticmethod
+        def _eq(instance, other):
+            if not (hasattr(other, '_name') and
+                    hasattr(other, '__args__')):
+                return False
+            return (instance._name == other._name and
+                    instance.__args__ == other.__args__)
+
+        @staticmethod
+        def _hash(instance):
+            return hash((instance._name, ) + instance.__args__)
+
         @classmethod
         def __prepare__(mcs, name, bases, **kwargs):
             slots = ('__args__', '__origin__')
 
-            def _repr(instance):
-                args = ", ".join([_type_repr(a) for a in instance.__args__])
-                return '{}[{}]'.format(instance.__origin__, args)
-
-            def eq(instance, other):
-                if not (hasattr(other, '_name') and
-                        hasattr(other, '__args__')):
-                    return False
-                return (instance._name == other._name and
-                        instance.__args__ == other.__args__)
-
-            def _hash(instance):
-                return hash((instance._name, ) + instance.__args__)
-
-            return dict(__slots__=slots,
-                        __repr__=_repr,
-                        __hash__=_hash,
-                        __eq__=eq)
+            return dict(__slots_=slots,
+                        __repr__=mcs._repr,
+                        __hash__=mcs._hash,
+                        __eq__=mcs._eq)
 
         def __new__(cls, name, bases, attrs, **kwargs):
             return super().__new__(cls, name, bases, attrs)

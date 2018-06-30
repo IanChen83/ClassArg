@@ -1,4 +1,4 @@
-from types import SimpleNamespace
+from types import SimpleNamespace as namespace
 
 import pytest
 
@@ -12,19 +12,21 @@ def _gen_parse_doc_testcase():
         'sed urna quis ante luctus sodales a vel felis.'
     )
 
-    # Single line, without argument_docs
+    # Single line, without argument_sections
     str0 = """Loren ipsum dolor sit amet."""
-    expect0 = dict(descriptions=[tiny_str])
+    expect0 = namespace(descriptions=[tiny_str],
+                        sections=[])
 
-    # Multiple sections, without argument_docs
+    # Multiple sections, without argument_sections
     str1 = """Loren ipsum dolor sit amet.
 
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
         sed urna quis ante luctus sodales a vel felis.
         """
-    expect1 = dict(descriptions=[tiny_str, long_str])
+    expect1 = namespace(descriptions=[tiny_str, long_str],
+                        sections=[])
 
-    # Multiple sections, argument_docs
+    # Multiple sections, argument_sections
     # key not found in the spec
     # additional blank line
     str2 = """
@@ -40,11 +42,13 @@ def _gen_parse_doc_testcase():
         bbb:  Loren ipsum dolor sit amet.
         ccc:  Loren ipsum dolor sit amet.
         """
-    expect2 = dict(descriptions=[long_str],
-                   argument_docs=dict(aaa=tiny_str,
-                                      bbb=tiny_str,
-                                      ccc=tiny_str,
-                                      xxx='pass'))
+    expect2 = namespace(descriptions=[long_str],
+                        sections=[namespace(header=None,
+                                            docs=dict(aaa=tiny_str,
+                                                      bbb=tiny_str,
+                                                      ccc=tiny_str,
+                                                      xxx='pass'),
+                                            aliases=dict())])
 
     # Ignore keys not found in the spec
     # Recognize continued lines
@@ -61,77 +65,16 @@ def _gen_parse_doc_testcase():
         ccc:  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
               sed urna quis ante luctus sodales a vel felis.
         """
-    expect3 = dict(descriptions=[long_str],
-                   argument_docs=dict(aaa=long_str,
-                                      bbb=long_str,
-                                      ccc=long_str))
+    expect3 = namespace(descriptions=[long_str],
+                        sections=[namespace(header=None,
+                                            docs=dict(aaa=long_str,
+                                                      bbb=long_str,
+                                                      ccc=long_str),
+                                            aliases=dict(xxx='pass'))])
 
-    # Multiple aliases
-    str4 = """
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
-        sed urna quis ante luctus sodales a vel felis.
-
-        aaa:  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
-              sed urna quis ante luctus sodales a vel felis.
-        -d1:   --ddd
-        -d2:   --ddd
-        bbb:  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
-              sed urna quis ante luctus sodales a vel felis.
-        -e:   --eee
-        ccc:  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
-              sed urna quis ante luctus sodales a vel felis.
-        """
-    expect4 = dict(descriptions=[long_str],
-                   argument_docs=dict(aaa=long_str,
-                                      bbb=long_str,
-                                      ccc=long_str),
-                   aliases=dict(d1='ddd',
-                                d2='ddd',
-                                e='eee'))
-
-    # Ignore invalid aliases
-    str5 = """
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
-        sed urna quis ante luctus sodales a vel felis.
-
-        aaa:  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
-              sed urna quis ante luctus sodales a vel felis.
-        -a1:  --asdf
-        -a1:  --aaa
-        -a2:  --asdf asdfasdf
-        --a2: --asdf asdfasdf
-        bbb:  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
-              sed urna quis ante luctus sodales a vel felis.
-        -b:   --bbb asdf
-              asdf
-        ccc:  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
-              sed urna quis ante luctus sodales a vel felis.
-        """
-    expect5 = dict(descriptions=[long_str],
-                   argument_docs=dict(aaa=long_str,
-                                      bbb=long_str,
-                                      ccc=long_str))
-
-    # Used alias
-    str6 = """
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
-        sed urna quis ante luctus sodales a vel felis.
-
-        aaa:  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
-              sed urna quis ante luctus sodales a vel felis.
-              sed urna quis ante luctus sodales a vel felis.
-        bbb:  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
-              sed urna quis ante luctus sodales a vel felis.
-        ccc:  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
-              sed urna quis ante luctus sodales a vel felis.
-        -ddd: --ddd
-        -ddd: --ddd
-        """
-    expect6 = ValueError()
-
-    # Multiple sections, argument_docs
+    # Multiple sections, argument_sections
     # headers, unrecognize header
-    str7 = """
+    str4 = """
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris
         sed urna quis ante luctus sodales a vel felis.
 
@@ -146,42 +89,38 @@ def _gen_parse_doc_testcase():
         Optional Arguments:
             xxx:  pass
         """
-    return_str = 'Returns:\n    xxx:  pass'
-    expect7 = dict(descriptions=[long_str, return_str],
-                   argument_docs=dict(aaa=tiny_str,
-                                      bbb=tiny_str,
-                                      ccc=tiny_str,
-                                      xxx='pass'))
+    expect4 = namespace(descriptions=[long_str],
+                        sections=[namespace(header='Returns',
+                                            docs=dict(xxx='pass'),
+                                            aliases=dict()),
+                                  namespace(header='Arguments',
+                                            docs=dict(aaa=tiny_str,
+                                                      bbb=tiny_str,
+                                                      ccc=tiny_str),
+                                            aliases=dict()),
+                                  namespace(header='Optional Arguments',
+                                            docs=dict(xxx='pass'),
+                                            aliases=dict())])
 
     yield str0, expect0
     yield str1, expect1
     yield str2, expect2
     yield str3, expect3
     yield str4, expect4
-    yield str5, expect5
-    yield str6, expect6
-    yield str7, expect7
 
 
 @pytest.mark.parametrize('docstring, expect', list(_gen_parse_doc_testcase()))
 def test_normalize_argument_docs(docstring, expect):
-    # from this function
-    # def func(aaa, bbb=False, *ccc, ddd: int, eee=2, **fff): pass
-    spec = SimpleNamespace(
-        args=['aaa', 'bbb'], varargs='ccc', varkw='fff', defaults=(1,),
-        kwonlyargs=['ddd', 'eee'], kwonlydefaults={'eee': 2},
-        annotations={'bbb': int, 'ddd': int, 'eee': int})
-
     if isinstance(expect, Exception):
         with pytest.raises(Exception) as e_info:
-            ret = doc.load_doc_hints(spec, docstring)
+            ret = doc.load_doc_hints(docstring)
             print(ret)  # only print if not raising error
 
         assert isinstance(expect, e_info.type)
     else:
-        ret = doc.load_doc_hints(spec, docstring)
-        for key, value in expect.items():
-            assert getattr(ret, key) == value
+        descriptions, sections = doc.parse_docstring(docstring)
+        assert descriptions == expect.descriptions
+        assert sections == expect.sections
 
 
 def test_get_normalized_docstring():
@@ -191,17 +130,17 @@ def test_get_normalized_docstring():
         'sed urna quis ante luctus sodales a vel felis.'
     )
     return_str = 'Returns:\n  xxx:  pass'
-    spec = SimpleNamespace(
+    spec = namespace(
         args=['aaa', 'bbb'], varargs='ccc', varkw='fff', defaults=(1,),
         kwonlyargs=['ddd', 'eee', 'xxx'],
         kwonlydefaults={'eee': 2, 'xxx': False},
         annotations={'bbb': int, 'ddd': int, 'eee': int, 'xxx': bool},
         descriptions=[long_str, return_str],
-        argument_docs=dict(aaa=tiny_str,
-                           bbb=tiny_str,
-                           ccc=tiny_str,
-                           ddd=tiny_str,
-                           xxx='pass'),
+        argument_sections=dict(aaa=tiny_str,
+                               bbb=tiny_str,
+                               ccc=tiny_str,
+                               ddd=tiny_str,
+                               xxx='pass'),
         aliases=dict(x='xxx'))
 
     expect7 = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Mauris

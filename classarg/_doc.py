@@ -1,125 +1,81 @@
 import re
 from textwrap import dedent, TextWrapper
 from collections import defaultdict
+from types import SimpleNamespace as namespace
 
-
-def _is_valid_alias_source(spec, key):
-    return key != spec.varkw
-
-
-def _is_valid_arg(spec, key):
-    return (key in spec.args or
-            key == spec.varargs or
-            key == spec.varkw or
-            key in spec.kwonlyargs)
-
+__all__ = (
+    'parse_docstring',
+)
 
 arg_doc_pattern = re.compile(r'^-{,2}([^\d\W]\w*):\s{1,}(.+)')
-alias_pattern = re.compile(r'^-{,2}([^\d\W]\w*):\s{1,}(-{1,2}[^\d\W]\w*)$')
-
-
-def _normalize_argument_docs(spec, section):
-    """Parse arg docs into entries and aliases
-
-    An arg entry has key in spec.{args, kwonlydefaults, varargs, varkw}
-    and value wrapped in multi-lines. For instance:
-
-        aa:  the meaning of aa, wrapped in multiple lines. It
-             doesn't necessarily need to be indented, though.
-
-    An arg alias has key and value fulfilling more strict rules. The value
-    should be in the spec. For instance:
-
-        -a:  --aa
-
-    The action when users specify -a in the CLI depends on the role and type
-    of --aa.
-
-    If kwargs exists, there can be aliases in the format of arg entry. These
-    aliases will be added into available switches. If there's no kwargs, this
-    type of alias is not allowed.
-    """
+alias_pattern = re.compile(r'^-{,2}([^\d\W]\w*):\s{1,}-{1,2}([^\d\W]\w*)$')
+def _parse_section(section): # noqa
     waiting = section.split('\n')
+    docs = {}
     docs, aliases = {}, {}
     last_key = None
 
     while waiting:
-        line = waiting.pop(0).rstrip()
-        matched = arg_doc_pattern.search(line) or alias_pattern.search(line)
-        if matched is None:
-            if last_key in docs:
-                line = ' ' + line.strip()
-                docs[last_key] = '{}\n{}'.format(
-                    docs[last_key].rstrip(), line.lstrip())
-        else:
+        line = waiting.pop(0).strip()
+        matched = alias_pattern.search(line)
+        if matched is not None:
             key, value = matched.groups()
-            if value.startswith('-'):
-                # for alias,
-                # argument_docs values don't start with '-'
-                key, value = key.lstrip('-'), value.lstrip('-')
-                if _is_valid_arg(spec, key):
-                    raise ValueError(
-                        "Key '{}' for aliasing has bee used.".format(key))
+            aliases[key] = value
+            last_key = None
+            continue
 
-                if _is_valid_alias_source(spec, value):
-                    aliases[key] = value
-                    last_key = key
-                else:
-                    last_key = None
-            else:
-                if _is_valid_arg(spec, key):
-                    docs[key] = value
-                    last_key = key
-                elif spec.varkw is not None:
-                    spec.kwonlyargs.append(key)
-                    spec.kwonlydefaults[key] = False
-                    spec.annotations[key] = bool
-                    docs[key] = value
-                    last_key = key
-                else:
-                    last_key = None
+        matched = arg_doc_pattern.search(line)
+        if matched is not None:
+            key, value = matched.groups()
+            docs[key] = value
+            last_key = key
+            continue
+
+        if last_key in docs:
+            line = ' ' + line.strip()
+            docs[last_key] = '{}\n{}'.format(
+                docs[last_key].rstrip(), line.lstrip())
+            continue
+
+        # TODO: warning
+        last_key = None
 
     return docs, aliases
 
 
-candidate_headers_ending = (
-    'arg:',
-    'args:',
-    'argument:',
-    'arguments:',
-    'flag:',
-    'flags:',
-    'switch:',
-    'switches:',
-)
-def load_doc_hints(spec, docstring): # noqa
-    spec.descriptions = []
-    spec.argument_docs = {}
-    spec.aliases = {}
+section_header_pattern = re.compile(r'\s*(.+):\s*$')
+def parse_docstring(docstring): # noqa
+    descriptions = []
+    sections = []
 
-    sections = [dedent(sec).strip()
-                for sec in docstring.split('\n\n')]
+    paragraphs = [dedent(sec).strip()
+                  for sec in docstring.split('\n\n')]
 
-    for section in sections:
-        if not section:
+    for para in paragraphs:
+        if not para:
             continue
 
-        original_section = section
-        header, *contents = section.split('\n', maxsplit=1)
-        if any(header.lower().endswith(item)
-               for item in candidate_headers_ending) and contents:
-            section = dedent(contents[0])
-            print(section)
+        original_para = para
+        header, *contents = para.split('\n', maxsplit=1)
+        if not contents:
+            descriptions.append(header)
+            continue
 
-        argument_docs, aliases = _normalize_argument_docs(spec, section)
+        header = section_header_pattern.search(header)
+        if header is not None:
+            header = header.groups()[0].title()
+            para = dedent(contents[0])
 
-        if not argument_docs and not aliases:
-            spec.descriptions.append(original_section)
+        docs, aliases = _parse_section(para)
+
+        if docs or aliases:
+            sections.append(namespace(header=header,
+                                      docs=docs,
+                                      aliases=aliases))
         else:
-            spec.argument_docs.update(**argument_docs)
-            spec.aliases.update(**aliases)
+            descriptions.append(original_para)
 
-    return spec
+    return descriptions, sections
 
 
 def _get_one_argument_doc(key, doc, width, tabstop):
@@ -147,7 +103,7 @@ def get_normalized_docstring(spec, width=70, tabstop=16):
     if hasattr(spec, 'descriptions'):
         sections.append('\n\n'.join(text for text in spec.descriptions))
 
-    if hasattr(spec, 'argument_docs') and hasattr(spec, 'aliases'):
+    if hasattr(spec, 'argument_sections') and hasattr(spec, 'aliases'):
         items = ['Arguments:']
         aliases = defaultdict(list)
         for alias, source in spec.aliases.items():
@@ -160,9 +116,9 @@ def get_normalized_docstring(spec, width=70, tabstop=16):
         candidates.extend(spec.kwonlyargs)
 
         for key in candidates:
-            if key not in spec.argument_docs:
+            if key not in spec.argument_sections:
                 continue
-            doc = spec.argument_docs[key]
+            doc = spec.argument_sections[key]
 
             name = key
             if name in spec.kwonlyargs:

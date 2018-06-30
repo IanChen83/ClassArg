@@ -12,7 +12,7 @@ https://docs.pytest.org/en/latest/example/parametrize.html#a-quick-port-of-tests
 '''
 
 
-def _gen_parse_testcase():
+def _gen_getfullargspec_testcase():
     def func(a, b=1, *c, d: int, e=2, **f): pass
 
     class X:
@@ -35,22 +35,26 @@ def _gen_parse_testcase():
 
     null_expect = SimpleNamespace(
         args=[], varargs=None, varkw=None, defaults=tuple(),
-        kwonlyargs=tuple(), kwonlydefaults={}, annotations={})
+        kwonlyargs=tuple(), kwonlydefaults={}, annotations={},
+        docs=SimpleNamespace())
 
     expect = SimpleNamespace(
         args=['a', 'b'], varargs='c', varkw='f', defaults=(1,),
         kwonlyargs=['d', 'e'], kwonlydefaults={'e': 2},
-        annotations={'b': int, 'd': int, 'e': int})
+        annotations={'b': int, 'd': int, 'e': int},
+        docs=SimpleNamespace())
 
     expect_with_self = SimpleNamespace(
         args=['self', 'a', 'b'], varargs='c', varkw='f', defaults=(1,),
         kwonlyargs=['d', 'e'], kwonlydefaults={'e': 2},
-        annotations={'b': int, 'd': int, 'e': int})
+        annotations={'b': int, 'd': int, 'e': int},
+        docs=SimpleNamespace())
 
     expect2 = SimpleNamespace(
         args=['a', 'b'], varargs=None, varkw=None, defaults=((1, 2), ),
         kwonlyargs=tuple(), kwonlydefaults={},
-        annotations={'b': Tuple[int, int]})
+        annotations={'b': Tuple[int, int]},
+        docs=SimpleNamespace())
 
     yield func, expect                  # func-expect0 function
     yield X.func, expect_with_self      # func-expect1 class method
@@ -66,11 +70,11 @@ def _gen_parse_testcase():
     yield 'error input', TypeError()    # func-expect10 error
 
 
-@pytest.mark.parametrize('func, expect', list(_gen_parse_testcase()))
-def test_parse(func, expect):
+@pytest.mark.parametrize('func, expect', list(_gen_getfullargspec_testcase()))
+def test_getfullargspec(func, expect):
     if isinstance(expect, Exception):
         with pytest.raises(Exception) as e_info:
-            ret = core.parse(func)
+            ret = core.getfullargspec(func)
             print(ret)  # only print if not raising error
 
         assert isinstance(expect, e_info.type)
