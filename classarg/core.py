@@ -9,16 +9,21 @@ from inspect import (
 )
 
 __all__ = (
+    'ArgumentError',
     'match',
     'run',
     'parse',
+    'print_help',
     'validate',
-    'ArgumentError',
 )
 
 
 class ArgumentError(Exception):
     pass
+
+
+def _getdefaultspec():
+    return
 
 
 def validate(func, kwargs):
@@ -35,13 +40,44 @@ _candidate_headers = (
     'keyword args',
     'keyword arguments',
     'parameters',
+    'options',
 )
-def _load_doc_hints(spec, docstring):  # noqa
-    from .doc import parse_docstring
-    descriptions, sections = parse_docstring(docstring)
+def load_doc_hints(spec, docstring):  # noqa
+    from .doc import parse_docstring, parse_arg_entries
+
+    arg_docs, arg_aliases = {}, {}
+    sections = parse_docstring(docstring)
+
+    for sec in sections:
+        if sec.header and sec.header.lower() in _candidate_headers:
+            docs, aliases = parse_arg_entries(sec.contents)
+            arg_docs.update(docs)
+            arg_aliases.update(aliases)
+
+    candidates = spec.args + spec.kwonlyargs
+    if spec.varkw is None:
+        # Only allow names in args and kwonlyargs
+        for key in arg_docs:
+            if key not in candidates:
+                raise ValueError("Key '{}' specified in docstring but not"
+                                 "found in function signature.".format(key))
+    else:
+        unknown_keys = tuple(key for key in arg_docs
+                             if key not in candidates)
+        spec.kwonlyargs = unknown_keys + spec.kwonlyargs
+        spec.kwonlydefaults.update({key: False for key in unknown_keys})
+
+    for key in arg_aliases:
+        if key in candidates:
+            raise ValueError("Alias '{}' specified in docstring"
+                             "is already used in function signature.".format())
+
+    spec.docs = arg_docs
+    spec.aliases = arg_aliases
+    spec.docstring = docstring
 
 
-def _load_type_hints(spec):
+def load_type_hints(spec):
     from ._typing import parse_annotations, Optional, infer_default_type
     type_hints = parse_annotations(spec.annotations)
 
@@ -90,6 +126,7 @@ def _get_normalized_spec(func):
 
 
 def getfullargspec(func):
+    """A wrapper for inspect.getfullargspec to fill all default values."""
     spec = _getfullargspec(func)
     ret = {
         'args': tuple(),
@@ -99,7 +136,8 @@ def getfullargspec(func):
         'kwonlyargs': tuple(),
         'kwonlydefaults': dict(),
         'annotations': dict(),
-        'docs': SimpleNamespace(),
+        'docstring': None,
+        'aliases': dict(),
     }
 
     for key in ret:
@@ -129,22 +167,24 @@ def parse(func, **options):
     skip_doc_hints = options.get('skip_doc_hints', False)
 
     if not skip_type_hints:
-        _load_type_hints(spec)
+        load_type_hints(spec)
 
     if (not skip_doc_hints and
             hasattr(func, '__doc__') and
             func.__doc__):
-        _load_doc_hints(spec, func.__doc__)
+        load_doc_hints(spec, func.__doc__)
 
     return spec
 
 
+# From Clime
+# -(?P<long>-)?(?P<key>(?(long)[^ =,]+|.))[ =]?(?P<meta>[^ ,]+)?
 pattern = re.compile(r'^-{1,2}([^\d\W][\w-]*)(?==?(\S*))')
 def _parse_one_arg(arg): # noqa
     if arg == '--':
         return arg
 
-    matched = pattern.search(arg)
+    matched = pattern.match(arg)
     if matched is None:
         if not arg.startswith('-'):
             return arg  # not flag or switch
@@ -176,15 +216,21 @@ def match(func, *, args=None, **options):
 
     # TODO: validate matcher
 
-    # From Clime
-    # -(?P<long>-)?(?P<key>(?(long)[^ =,]+|.))[ =]?(?P<meta>[^ ,]+)?
-
     return matcher_args, matcher_kwargs
 
 
-def run(func, *, args=None, **options):
+def print_help(spec):
+    pass
 
-    spec = parse(func, args=args, **options)
+
+def run(func, *, args=None, **options):
+    spec = parse(func, **options)
+    args = args if args is not None else sys.argv[1:]
+
+    if '-h' in args or '--help' in args:
+        print_help(spec)
+        exit()
+
     matcher = match(spec, args=args, **options)
     validate(func, matcher)
 

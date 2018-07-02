@@ -36,25 +36,25 @@ def _gen_getfullargspec_testcase():
     null_expect = SimpleNamespace(
         args=[], varargs=None, varkw=None, defaults=tuple(),
         kwonlyargs=tuple(), kwonlydefaults={}, annotations={},
-        docs=SimpleNamespace())
+        docstring=None, aliases=dict())
 
     expect = SimpleNamespace(
         args=['a', 'b'], varargs='c', varkw='f', defaults=(1,),
         kwonlyargs=['d', 'e'], kwonlydefaults={'e': 2},
         annotations={'b': int, 'd': int, 'e': int},
-        docs=SimpleNamespace())
+        docstring=None, aliases=dict())
 
     expect_with_self = SimpleNamespace(
         args=['self', 'a', 'b'], varargs='c', varkw='f', defaults=(1,),
         kwonlyargs=['d', 'e'], kwonlydefaults={'e': 2},
         annotations={'b': int, 'd': int, 'e': int},
-        docs=SimpleNamespace())
+        docstring=None, aliases=dict())
 
     expect2 = SimpleNamespace(
         args=['a', 'b'], varargs=None, varkw=None, defaults=((1, 2), ),
         kwonlyargs=tuple(), kwonlydefaults={},
         annotations={'b': Tuple[int, int]},
-        docs=SimpleNamespace())
+        docstring=None, aliases=dict())
 
     yield func, expect                  # func-expect0 function
     yield X.func, expect_with_self      # func-expect1 class method
